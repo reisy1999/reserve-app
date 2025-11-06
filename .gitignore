@@ -1,0 +1,32 @@
+# Distribution files (tar images)
+dist/
+
+# Node modules
+node_modules/
+reservation-web/node_modules/
+reserve-api/node_modules/
+
+# Build outputs
+reservation-web/.next/
+reserve-api/dist/
+
+# Environment files
+.env
+.env.local
+.env*.local
+compose/.env
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
