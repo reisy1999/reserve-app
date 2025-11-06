@@ -73,7 +73,7 @@ services:
       context: ../reservation-web
       dockerfile: Dockerfile.dev
     expose:
-      - "3002"
+      - "5000"
     environment:
       - TZ=Asia/Tokyo
       - NODE_ENV=development
@@ -85,7 +85,7 @@ services:
       api:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:3002/"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:5000/"]
       interval: 10s
       timeout: 3s
       start_period: 30s
