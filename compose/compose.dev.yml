@@ -13,7 +13,6 @@ services:
     volumes:
       - ../reserve-api:/app
       - /app/node_modules
-      - /app/dist
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:3001/health"]
       interval: 10s
