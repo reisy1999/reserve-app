@@ -28,7 +28,11 @@ All notable changes to this project will be documented in this file.
 - Changed nginx healthcheck from `wget` to `curl` (more reliable in alpine)
 - Updated volume mounting strategy for better hot-reload support:
   - Web: Full directory mount with node_modules and .next excluded
-  - API: Full directory mount with node_modules and dist excluded
+  - API: Full directory mount with node_modules excluded (dist NOT excluded to allow NestJS rebuild)
+- Removed `/app/dist` volume mount from api service to fix `EBUSY: resource busy or locked` error
+  - NestJS watch mode needs to delete and recreate `dist/` directory
+  - Volume-mounted directories cannot be deleted, causing startup failure
+  - Solution: Only exclude `node_modules`, allow `dist/` to be part of main mount
 - Ensured all compose files use curl for healthchecks consistently
 
 ### Security
