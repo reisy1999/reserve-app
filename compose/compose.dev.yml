@@ -143,4 +143,5 @@ volumes:
 
 networks:
   edge_net:
-    driver: bridge
+    external: true
+    name: edge_net
