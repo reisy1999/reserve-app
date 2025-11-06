@@ -1,7 +1,8 @@
-.PHONY: help dev-up dev-down dev-logs dev-ps dev-restart prov-build prov-save prov-load prov-up prov-down prov-ps clean
+.PHONY: help dev-up dev-up-full dev-down dev-logs dev-ps dev-restart prov-build prov-save prov-load prov-up prov-down prov-ps clean
 
 # Variables
 DEV_COMPOSE := compose/compose.dev.yml
+DEV_ENV := compose/.env.dev
 PROV_COMPOSE := compose/compose.prov.yml
 VERSION ?= 0.1.0
 DIST_DIR := dist
@@ -19,19 +20,22 @@ help: ## Show this help message
 # Development mode targets
 #
 dev-up: ## Start all services in dev mode with hot-reload
-	docker compose -f $(DEV_COMPOSE) up -d --build
+	docker compose -f $(DEV_COMPOSE) --env-file $(DEV_ENV) up -d --build
+
+dev-up-full: ## Start all services including phpMyAdmin (port 9080)
+	docker compose -f $(DEV_COMPOSE) --env-file $(DEV_ENV) --profile dev up -d --build
 
 dev-down: ## Stop all dev services
-	docker compose -f $(DEV_COMPOSE) down
+	docker compose -f $(DEV_COMPOSE) --env-file $(DEV_ENV) down
 
 dev-logs: ## Show logs from all dev services (follow mode)
-	docker compose -f $(DEV_COMPOSE) logs -f
+	docker compose -f $(DEV_COMPOSE) --env-file $(DEV_ENV) logs -f
 
 dev-ps: ## Show status of all dev services
-	docker compose -f $(DEV_COMPOSE) ps
+	docker compose -f $(DEV_COMPOSE) --env-file $(DEV_ENV) ps
 
 dev-restart: ## Restart all dev services
-	docker compose -f $(DEV_COMPOSE) restart
+	docker compose -f $(DEV_COMPOSE) --env-file $(DEV_ENV) restart
 
 #
 # Production (prov) mode targets
@@ -81,10 +85,18 @@ prov-logs: ## Show logs from all production services
 #
 clean: ## Remove all containers, networks, and images (CAUTION: destructive)
 	@echo "Stopping all services..."
-	-docker compose -f $(DEV_COMPOSE) down
+	-docker compose -f $(DEV_COMPOSE) --env-file $(DEV_ENV) down
 	-docker compose -f $(PROV_COMPOSE) down
 	@echo "Cleaning up Docker resources..."
 	-docker system prune -f
+	@echo "Clean complete!"
+
+clean-volumes: ## Remove all containers, networks, images, and volumes (CAUTION: very destructive)
+	@echo "Stopping all services..."
+	-docker compose -f $(DEV_COMPOSE) --env-file $(DEV_ENV) down -v
+	-docker compose -f $(PROV_COMPOSE) down -v
+	@echo "Cleaning up Docker resources including volumes..."
+	-docker system prune -af --volumes
 	@echo "Clean complete!"
 
 test-dev: ## Test dev deployment (start, wait, check health, show status)

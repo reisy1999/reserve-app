@@ -2,6 +2,71 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2025-11-06
+
+### Added - Docker Integration with Submodules
+
+- **MySQL 8.0 container** integrated into compose/compose.dev.yml
+  - Database initialization scripts from reserve-api/docker/mysql/init
+  - Persistent volume: mysql_data_dev
+  - Health checks with mysqladmin ping
+  - UTF-8mb4 character set configuration
+
+- **phpMyAdmin** database management tool (optional, port 9080)
+  - Start with: `make dev-up-full`
+  - Profile-based deployment (--profile dev)
+  - Web interface for database management
+
+- **Environment variable support**
+  - New file: compose/.env.dev with development defaults
+  - MySQL credentials, JWT secrets, Admin tokens
+  - Makefile updated to load .env.dev automatically
+
+- **New Makefile targets**
+  - `make dev-up-full` - Start with phpMyAdmin
+  - `make clean-volumes` - Remove all volumes (complete reset)
+
+### Changed
+
+- **API internal port**: 3001 → 3000 (matches reserve-api actual port)
+  - Updated compose/compose.dev.yml
+  - Updated edge/nginx/nginx.conf proxy_pass
+
+- **API service configuration**
+  - Added database connection environment variables (DB_TYPE, DB_HOST, etc.)
+  - Added JWT configuration (JWT_SECRET, JWT_REFRESH_SECRET, etc.)
+  - Added ADMIN_TOKEN for admin authentication
+  - API now depends on MySQL health check
+
+- **Service startup order**
+  - mysql → api → web → nginx
+  - All services use health check conditions
+
+- **Documentation updates**
+  - README.md: Updated architecture diagram, added MySQL and phpMyAdmin
+  - docs/DOCKER_INTEGRATION_PLAN.md: Complete integration strategy document
+
+### Fixed
+
+- API health check now uses port 3000 (was 3001)
+- Removed `/app/dist` volume mount to fix NestJS EBUSY error
+
+### Technical Details
+
+- **Database**: MySQL 8.0 with custom configuration
+- **API Port**: Internal 3000 (was incorrectly documented as 3001)
+- **Network**: edge_net (unified from reserve-api-network)
+- **phpMyAdmin**: Port 9080 (changed from 8080 to avoid conflict with nginx)
+
+### Migration Notes
+
+This version integrates the existing reserve-api Docker configuration with the created infrastructure. If upgrading from 0.1.0:
+
+1. Pull latest changes
+2. Run `make dev-down` to stop old services
+3. Run `make dev-up` with new MySQL integration
+4. Database will initialize automatically from SQL scripts
+
 ## [0.1.0] - 2025-11-06
 
 ### Added
@@ -15,13 +80,13 @@ All notable changes to this project will be documented in this file.
 - Bridge network isolation (no host mode)
 
 ### Technical Details
-- **Node.js**: 22.11.0 (bookworm builder, slim runtime)
+- **Node.js**: 20 (reserve-api), 22.11.0 (infrastructure)
 - **Nginx**: 1.27.2-alpine with curl for healthchecks
 - **Next.js**: 14.2.18 with standalone output
 - **NestJS**: 10.4.4 with watch mode support
 - **Timezone**: Asia/Tokyo unified across all containers
 - **Network**: Single bridge network (edge_net)
-- **Ports**: External 8080 (nginx only), Internal 3002 (web), 3001 (api)
+- **Ports**: External 8080 (nginx only), Internal 3002 (web), 3000 (api)
 
 ### Fixed
 - Added `package-lock.json` for both web and api (required for `npm ci`)
