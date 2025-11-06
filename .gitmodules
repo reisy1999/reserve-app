@@ -2,3 +2,7 @@
 	path = reservation-web
 	url = https://github.com/reisy1999/reservation-web
 	branch = main
+[submodule "reserve-api"]
+	path = reserve-api
+	url = https://github.com/reisy1999/reserve-api
+	branch = main
