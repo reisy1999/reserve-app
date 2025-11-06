@@ -1,0 +1,4 @@
+[submodule "reservation-web"]
+	path = reservation-web
+	url = https://github.com/reisy1999/reservation-web
+	branch = main
