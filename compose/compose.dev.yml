@@ -1,20 +1,63 @@
 name: edge-dev
 
 services:
+  mysql:
+    image: mysql:8.0
+    container_name: reserve-mysql-dev
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_password}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-reserve_db}
+      MYSQL_USER: ${MYSQL_USER:-reserve_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-reserve_password}
+      TZ: Asia/Tokyo
+    expose:
+      - "3306"
+    volumes:
+      - mysql_data_dev:/var/lib/mysql
+      - ../reserve-api/docker/mysql/init:/docker-entrypoint-initdb.d
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+      - --sql-mode=STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-root_password}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - edge_net
+
   api:
     build:
       context: ../reserve-api
       dockerfile: Dockerfile.dev
     expose:
-      - "3001"
+      - "3000"
     environment:
       - TZ=Asia/Tokyo
       - NODE_ENV=development
+      - PORT=3000
+      # Database connection
+      - DB_TYPE=mysql
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USERNAME=${MYSQL_USER:-reserve_user}
+      - DB_PASSWORD=${MYSQL_PASSWORD:-reserve_password}
+      - DB_DATABASE=${MYSQL_DATABASE:-reserve_db}
+      # JWT settings
+      - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret-change-in-production}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-dev-jwt-refresh-secret}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-15m}
+      - JWT_REFRESH_EXPIRES_IN=${JWT_REFRESH_EXPIRES_IN:-7d}
+      # Admin settings
+      - ADMIN_TOKEN=${ADMIN_TOKEN:-dev-admin-token-change-in-production}
     volumes:
       - ../reserve-api:/app
       - /app/node_modules
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:3001/health"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/health"]
       interval: 10s
       timeout: 3s
       start_period: 30s
@@ -35,15 +78,15 @@ services:
       - ../reservation-web:/app
       - /app/node_modules
       - /app/.next
+    depends_on:
+      api:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:3002/"]
       interval: 10s
       timeout: 3s
       start_period: 30s
       retries: 3
-    depends_on:
-      api:
-        condition: service_healthy
     networks:
       - edge_net
 
@@ -68,6 +111,32 @@ services:
         condition: service_healthy
     networks:
       - edge_net
+
+  # Optional: Database management tool
+  # Start with: docker compose -f compose/compose.dev.yml --profile dev up
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: reserve-phpmyadmin-dev
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: root
+      PMA_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_password}
+      UPLOAD_LIMIT: 50M
+    ports:
+      - "9080:80"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - edge_net
+    profiles:
+      - dev
+
+volumes:
+  mysql_data_dev:
+    driver: local
 
 networks:
   edge_net:

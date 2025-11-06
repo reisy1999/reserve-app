@@ -15,6 +15,12 @@ reserve-api/dist/
 .env.local
 .env*.local
 compose/.env
+compose/.env.local
+compose/.env.prod
+compose/.env.production
+
+# Allow .env.dev to be committed (development defaults)
+!compose/.env.dev
 
 # Logs
 *.log
