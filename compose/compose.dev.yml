@@ -1,0 +1,72 @@
+name: edge-dev
+
+services:
+  api:
+    build:
+      context: ../reserve-api
+      dockerfile: Dockerfile.dev
+    expose:
+      - "3001"
+    environment:
+      - TZ=Asia/Tokyo
+      - NODE_ENV=development
+    volumes:
+      - ../reserve-api/src:/app/src
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 3s
+      start_period: 30s
+      retries: 3
+    networks:
+      - edge_net
+
+  web:
+    build:
+      context: ../reservation-web
+      dockerfile: Dockerfile.dev
+    expose:
+      - "3002"
+    environment:
+      - TZ=Asia/Tokyo
+      - NODE_ENV=development
+    volumes:
+      - ../reservation-web/app:/app/app
+      - ../reservation-web/public:/app/public
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3002/"]
+      interval: 10s
+      timeout: 3s
+      start_period: 30s
+      retries: 3
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - edge_net
+
+  nginx:
+    build:
+      context: ../edge/nginx
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - TZ=Asia/Tokyo
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/"]
+      interval: 10s
+      timeout: 3s
+      start_period: 5s
+      retries: 3
+    depends_on:
+      web:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+    networks:
+      - edge_net
+
+networks:
+  edge_net:
+    driver: bridge
