@@ -1,16 +1,54 @@
-name: edge-prov
+name: edge-prod
 
 services:
+  mysql:
+    image: mysql:8.0
+    container_name: reserve-mysql-prod
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Fixed values only - secrets loaded from env_file
+      TZ: Asia/Tokyo
+    expose:
+      - "3306"
+    volumes:
+      - mysql_data_prod:/var/lib/mysql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-authentication-plugin=mysql_native_password
+      - --sql-mode=STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - edge_net
+
   api:
     image: reserve-api:0.1.0
+    container_name: reserve-api-prod
     expose:
-      - "3001"
+      - "3000"
+    env_file:
+      - .env
     environment:
-      - TZ=Asia/Tokyo
-      - NODE_ENV=production
+      # Fixed values only - DB credentials and secrets loaded from env_file
+      TZ: Asia/Tokyo
+      NODE_ENV: production
+      PORT: 3000
+      # Database connection (fixed values)
+      DB_TYPE: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
     restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:3001/health"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/api/health"]
       interval: 10s
       timeout: 3s
       start_period: 30s
@@ -20,44 +58,60 @@ services:
 
   web:
     image: reservation-web:0.1.0
+    container_name: reserve-web-prod
     expose:
-      - "3002"
+      - "5000"
+    env_file:
+      - .env
     environment:
-      - TZ=Asia/Tokyo
-      - NODE_ENV=production
+      # Fixed values only
+      TZ: Asia/Tokyo
+      NODE_ENV: production
+      # NOTE: NEXT_PUBLIC_* variables are embedded at build time in the image
+      # Runtime environment variables can override them if needed
+      NEXT_PUBLIC_API_BASE_URL: /api
+      NEXT_PUBLIC_ADMIN_TOKEN: ${NEXT_PUBLIC_ADMIN_TOKEN}
     restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:3002/"]
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/', (r) => process.exit(r.statusCode === 200 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 10s
       timeout: 3s
       start_period: 30s
       retries: 3
-    depends_on:
-      api:
-        condition: service_healthy
     networks:
       - edge_net
 
   nginx:
     image: edge-nginx:0.1.0
+    container_name: reserve-nginx-prod
     ports:
       - "8080:8080"
+    env_file:
+      - .env
     environment:
-      - TZ=Asia/Tokyo
+      # Fixed values only
+      TZ: Asia/Tokyo
     restart: unless-stopped
+    depends_on:
+      web:
+        condition: service_healthy
+      api:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/", "-o", "/dev/null"]
       interval: 10s
       timeout: 3s
       start_period: 5s
       retries: 3
-    depends_on:
-      web:
-        condition: service_healthy
-      api:
-        condition: service_healthy
     networks:
       - edge_net
+
+volumes:
+  mysql_data_prod:
+    driver: local
 
 networks:
   edge_net:

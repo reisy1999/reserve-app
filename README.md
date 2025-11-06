@@ -4,6 +4,19 @@ Containerized reservation system with separate nginx, web (Next.js), and api (Ne
 
 ## Quick Start
 
+### Initial Setup
+
+**IMPORTANT**: Before starting, create environment configuration files:
+
+```bash
+# Development environment (already exists)
+# Review and modify if needed: compose/.env.dev
+
+# Production environment (create from template)
+cp compose/.env.example compose/.env
+# Edit compose/.env with production values (secrets, passwords, etc.)
+```
+
 ### Development Mode
 
 ```bash
@@ -19,16 +32,75 @@ open http://localhost:8080
 
 ### Production Mode (Offline Deployment)
 
+**Build Environment** (with internet access):
+
 ```bash
-# Build and save images for offline distribution
+# 1. Create production environment file
+cp compose/.env.example compose/.env
+# Edit compose/.env with production secrets
+
+# 2. Build and save images for offline distribution
+# IMPORTANT: NEXT_PUBLIC_* variables are embedded at build time
 make prov-save
 
-# On target machine: load images
+# 3. Transfer to target machine:
+#    - dist/*.tar (Docker images)
+#    - compose/.env (environment configuration)
+#    - compose/compose.prov.yml (compose configuration)
+#    - Makefile (optional, for convenience)
+```
+
+**Target Machine** (offline environment):
+
+```bash
+# 1. Ensure compose/.env exists in the same location
+
+# 2. Load images
 make prov-load
 
-# Start production services
+# 3. Start production services
 make prov-up
+
+# 4. Verify deployment
+make prov-ps
 ```
+
+## Environment Variables
+
+All environment variables are managed in a **single source of truth**:
+
+- `compose/.env.example` - Template with all available variables
+- `compose/.env.dev` - Development configuration (committed to repo)
+- `compose/.env` - Production configuration (**DO NOT commit**)
+
+### Key Variables
+
+**Database**:
+- `MYSQL_*` - MySQL server configuration
+- `DB_*` - API database connection settings
+
+**Security**:
+- `JWT_SECRET`, `JWT_REFRESH_SECRET` - JWT token signing keys
+- `ADMIN_TOKEN` - Admin API authentication token
+- `SECURITY_PIN_PEPPER` - Additional security for PIN hashing
+
+**Next.js Public Variables** (embedded at build time):
+- `NEXT_PUBLIC_API_BASE_URL` - API endpoint for frontend
+- `NEXT_PUBLIC_ADMIN_TOKEN` - **Must match `ADMIN_TOKEN`**
+
+⚠️ **IMPORTANT**:
+- `ADMIN_TOKEN` and `NEXT_PUBLIC_ADMIN_TOKEN` must have identical values
+- `NEXT_PUBLIC_*` variables are embedded into the Next.js bundle at build time
+- Changing `NEXT_PUBLIC_*` requires rebuilding the web image
+
+### Environment File Structure
+
+Docker Compose loads variables in this order (higher priority first):
+1. `--env-file` specified in command
+2. `environment:` section in compose.yml
+3. Shell environment variables
+
+All `docker compose` commands **must** include `--env-file` (automated in Makefile).
 
 ## Documentation
 

@@ -5,11 +5,10 @@ services:
     image: mysql:8.0
     container_name: reserve-mysql-dev
     restart: unless-stopped
+    env_file:
+      - .env.dev
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_password}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-reserve_db}
-      MYSQL_USER: ${MYSQL_USER:-reserve_user}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-reserve_password}
+      # Fixed values only - secrets loaded from env_file
       TZ: Asia/Tokyo
     expose:
       - "3306"
@@ -22,7 +21,7 @@ services:
       - --default-authentication-plugin=mysql_native_password
       - --sql-mode=STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-root_password}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -35,24 +34,17 @@ services:
       dockerfile: Dockerfile.dev
     expose:
       - "3000"
+    env_file:
+      - .env.dev
     environment:
-      - TZ=Asia/Tokyo
-      - NODE_ENV=development
-      - PORT=3000
-      # Database connection
-      - DB_TYPE=mysql
-      - DB_HOST=mysql
-      - DB_PORT=3306
-      - DB_USERNAME=${MYSQL_USER:-reserve_user}
-      - DB_PASSWORD=${MYSQL_PASSWORD:-reserve_password}
-      - DB_DATABASE=${MYSQL_DATABASE:-reserve_db}
-      # JWT settings
-      - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret-change-in-production}
-      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET:-dev-jwt-refresh-secret}
-      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-15m}
-      - JWT_REFRESH_EXPIRES_IN=${JWT_REFRESH_EXPIRES_IN:-7d}
-      # Admin settings
-      - ADMIN_TOKEN=${ADMIN_TOKEN:-dev-admin-token-change-in-production}
+      # Fixed values only - DB credentials and secrets loaded from env_file
+      TZ: Asia/Tokyo
+      NODE_ENV: development
+      PORT: 3000
+      # Database connection (fixed values)
+      DB_TYPE: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
     volumes:
       - ../reserve-api:/app
       - /app/node_modules
@@ -74,9 +66,17 @@ services:
       dockerfile: Dockerfile.dev
     expose:
       - "5000"
+    env_file:
+      - .env.dev
     environment:
-      - TZ=Asia/Tokyo
-      - NODE_ENV=development
+      # Fixed values only
+      TZ: Asia/Tokyo
+      NODE_ENV: development
+      # IMPORTANT: NEXT_PUBLIC_* variables are embedded at build time
+      # These must be explicitly defined here (not just in env_file)
+      # to ensure they are available during Next.js build process
+      NEXT_PUBLIC_API_BASE_URL: /api
+      NEXT_PUBLIC_ADMIN_TOKEN: ${NEXT_PUBLIC_ADMIN_TOKEN}
     volumes:
       - ../reservation-web:/app
       - /app/node_modules
@@ -99,8 +99,11 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
+    env_file:
+      - .env.dev
     environment:
-      - TZ=Asia/Tokyo
+      # Fixed values only
+      TZ: Asia/Tokyo
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost:8080/", "-o", "/dev/null"]
       interval: 10s
@@ -116,16 +119,19 @@ services:
       - edge_net
 
   # Optional: Database management tool
-  # Start with: docker compose -f compose/compose.dev.yml --profile dev up
+  # Start with: docker compose -f compose/compose.dev.yml --env-file compose/.env.dev --profile dev up
   phpmyadmin:
     image: phpmyadmin:latest
     container_name: reserve-phpmyadmin-dev
     restart: unless-stopped
+    env_file:
+      - .env.dev
     environment:
+      # Fixed values only
       PMA_HOST: mysql
       PMA_PORT: 3306
       PMA_USER: root
-      PMA_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_password}
+      PMA_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       UPLOAD_LIMIT: 50M
     ports:
       - "9080:80"

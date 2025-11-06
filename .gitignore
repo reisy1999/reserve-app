@@ -11,16 +11,29 @@ reservation-web/.next/
 reserve-api/dist/
 
 # Environment files
+# Policy: .dev (development), .example (production template) are tracked
+# Policy: .env, .local, .prod, .production are NOT tracked (user-specific/production)
 .env
 .env.local
 .env*.local
+.env.prod
+.env.production
 compose/.env
 compose/.env.local
 compose/.env.prod
 compose/.env.production
+reserve-api/.env
+reserve-api/.env.local
+reserve-api/.env.prod
+reserve-api/.env.production
+reservation-web/.env
+reservation-web/.env.local
+reservation-web/.env.prod
+reservation-web/.env.production
 
-# Allow .env.dev to be committed (development defaults)
-!compose/.env.dev
+# Explicitly allow .dev and .example files to be committed
+!**/.env.dev
+!**/.env.example
 
 # Logs
 *.log

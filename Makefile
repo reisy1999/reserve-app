@@ -4,6 +4,7 @@
 DEV_COMPOSE := compose/compose.dev.yml
 DEV_ENV := compose/.env.dev
 PROV_COMPOSE := compose/compose.prov.yml
+PROV_ENV := compose/.env
 VERSION ?= 0.1.0
 DIST_DIR := dist
 
@@ -40,10 +41,17 @@ dev-restart: ## Restart all dev services
 #
 # Production (prov) mode targets
 #
-prov-build: ## Build production images for prov mode
-	@echo "Building production images..."
-	docker build -t $(WEB_IMAGE) -f reservation-web/Dockerfile reservation-web
-	docker build -t $(API_IMAGE) -f reserve-api/Dockerfile reserve-api
+prov-build: ## Build production images for prov mode (requires compose/.env)
+	@echo "Checking for production environment file..."
+	@test -f $(PROV_ENV) || (echo "ERROR: $(PROV_ENV) not found. Copy compose/.env.example to compose/.env first." && exit 1)
+	@echo "Loading environment variables and building images..."
+	@set -a; . $(PROV_ENV); set +a; \
+	echo "Building production images..."; \
+	docker build -t $(WEB_IMAGE) \
+		--build-arg NEXT_PUBLIC_API_BASE_URL="$$NEXT_PUBLIC_API_BASE_URL" \
+		--build-arg NEXT_PUBLIC_ADMIN_TOKEN="$$NEXT_PUBLIC_ADMIN_TOKEN" \
+		-f reservation-web/Dockerfile reservation-web && \
+	docker build -t $(API_IMAGE) -f reserve-api/Dockerfile reserve-api && \
 	docker build -t $(NGINX_IMAGE) -f edge/nginx/Dockerfile edge/nginx
 	@echo "Build complete!"
 	@echo "  - $(WEB_IMAGE)"
@@ -68,17 +76,18 @@ prov-load: ## Load production images from tar files (for offline deployment)
 	@echo "Images loaded successfully!"
 	@docker images | grep -E "reservation-web|reserve-api|edge-nginx"
 
-prov-up: ## Start all services in production mode (requires images to be loaded)
-	docker compose -f $(PROV_COMPOSE) up -d
+prov-up: ## Start all services in production mode (requires images to be loaded and compose/.env)
+	@test -f $(PROV_ENV) || (echo "ERROR: $(PROV_ENV) not found. Copy compose/.env.example to compose/.env first." && exit 1)
+	docker compose -f $(PROV_COMPOSE) --env-file $(PROV_ENV) up -d
 
 prov-down: ## Stop all production services
-	docker compose -f $(PROV_COMPOSE) down
+	docker compose -f $(PROV_COMPOSE) --env-file $(PROV_ENV) down
 
 prov-ps: ## Show status of all production services
-	docker compose -f $(PROV_COMPOSE) ps
+	docker compose -f $(PROV_COMPOSE) --env-file $(PROV_ENV) ps
 
 prov-logs: ## Show logs from all production services
-	docker compose -f $(PROV_COMPOSE) logs -f
+	docker compose -f $(PROV_COMPOSE) --env-file $(PROV_ENV) logs -f
 
 #
 # Utility targets
@@ -86,7 +95,7 @@ prov-logs: ## Show logs from all production services
 clean: ## Remove all containers, networks, and images (CAUTION: destructive)
 	@echo "Stopping all services..."
 	-docker compose -f $(DEV_COMPOSE) --env-file $(DEV_ENV) down
-	-docker compose -f $(PROV_COMPOSE) down
+	-test -f $(PROV_ENV) && docker compose -f $(PROV_COMPOSE) --env-file $(PROV_ENV) down || docker compose -f $(PROV_COMPOSE) down
 	@echo "Cleaning up Docker resources..."
 	-docker system prune -f
 	@echo "Clean complete!"
@@ -94,7 +103,7 @@ clean: ## Remove all containers, networks, and images (CAUTION: destructive)
 clean-volumes: ## Remove all containers, networks, images, and volumes (CAUTION: very destructive)
 	@echo "Stopping all services..."
 	-docker compose -f $(DEV_COMPOSE) --env-file $(DEV_ENV) down -v
-	-docker compose -f $(PROV_COMPOSE) down -v
+	-test -f $(PROV_ENV) && docker compose -f $(PROV_COMPOSE) --env-file $(PROV_ENV) down -v || docker compose -f $(PROV_COMPOSE) down -v
 	@echo "Cleaning up Docker resources including volumes..."
 	-docker system prune -af --volumes
 	@echo "Clean complete!"
