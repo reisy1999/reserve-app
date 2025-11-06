@@ -24,6 +24,7 @@ required_files=(
     "reservation-web/Dockerfile"
     "reservation-web/Dockerfile.dev"
     "reservation-web/package.json"
+    "reservation-web/package-lock.json"
     "reservation-web/next.config.js"
     "reservation-web/tsconfig.json"
     "reservation-web/app/page.tsx"
@@ -31,6 +32,7 @@ required_files=(
     "reserve-api/Dockerfile"
     "reserve-api/Dockerfile.dev"
     "reserve-api/package.json"
+    "reserve-api/package-lock.json"
     "reserve-api/tsconfig.json"
     "reserve-api/nest-cli.json"
     "reserve-api/src/main.ts"
@@ -80,10 +82,18 @@ else
     exit 1
 fi
 
-if grep -q "FROM nginx:1.27" edge/nginx/Dockerfile && grep -q "HEALTHCHECK" edge/nginx/Dockerfile; then
-    echo "  ✓ Nginx Dockerfile has specific version tag and healthcheck"
+if grep -q "FROM nginx:1.27" edge/nginx/Dockerfile && grep -q "HEALTHCHECK" edge/nginx/Dockerfile && grep -q "curl" edge/nginx/Dockerfile; then
+    echo "  ✓ Nginx Dockerfile has specific version tag, healthcheck, and curl"
 else
     echo "  ✗ Nginx Dockerfile missing requirements"
+    exit 1
+fi
+
+# Check lockfiles exist
+if [ -f "reservation-web/package-lock.json" ] && [ -f "reserve-api/package-lock.json" ]; then
+    echo "  ✓ Both package-lock.json files exist (for npm ci)"
+else
+    echo "  ✗ Missing package-lock.json files"
     exit 1
 fi
 
