@@ -36,11 +36,13 @@ See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for complete deployment instruction
 
 ## Architecture
 
-- **nginx**: Reverse proxy (port 8080)
+- **nginx**: Reverse proxy (port 8080) - Routes / → web, /api/ → api
 - **web**: Next.js frontend (internal port 3002)
-- **api**: NestJS backend (internal port 3001)
+- **api**: NestJS backend (internal port 3000)
+- **mysql**: MySQL 8.0 database (internal port 3306)
+- **phpmyadmin**: Database management tool (port 9080, optional)
 
-All services communicate over a private bridge network. Only nginx is exposed externally.
+All services communicate over a private bridge network (`edge_net`). Only nginx and phpMyAdmin are exposed externally.
 
 ## Available Commands
 
@@ -52,8 +54,11 @@ make help
 
 ### Quick Reference
 
-- `make dev-up` - Start development environment
+- `make dev-up` - Start development environment (mysql + api + web + nginx)
+- `make dev-up-full` - Start with phpMyAdmin included (http://localhost:9080)
 - `make dev-down` - Stop development environment
+- `make dev-logs` - View logs from all services
+- `make dev-ps` - Show service status
 - `make prov-build` - Build production images
 - `make prov-save` - Save images for offline deployment
 - `make prov-up` - Start production services
